@@ -1,0 +1,14 @@
+cd /home/yitao/Documents/models/im2txt
+mkdir ckpt
+mkdir ckpt-converted
+cd ckpt
+download https://drive.google.com/file/d/0B3laN3vvvSD2T1RPeDA5djJ6bFE/view?usp=sharing
+wget https://github.com/KranthiGV/Pretrained-Show-and-Tell-model/blob/master/model.ckpt-2000000.index
+wget https://github.com/KranthiGV/Pretrained-Show-and-Tell-model/blob/master/word_counts.txt
+
+cd /home/yitao/Documents/tensorflow/tensorflow/contrib/rnn/python/tools
+python checkpoint_convert.py /home/yitao/Documents/models/im2txt/ckpt/model.ckpt-2000000 /home/yitao/Documents/models/im2txt/ckpt-converted/model.ckpt-2000000
+
+cd /home/yitao/Documents/models/im2txt
+bazel build -c opt im2txt/run_inference
+bazel-bin/im2txt/run_inference --checkpoint_path=/home/yitao/Documents/models/im2txt/ckpt-converted/model.ckpt-2000000 --vocab_file=/home/yitao/Documents/models/im2txt/ckpt/word_counts.txt --input_files=/home/yitao/Documents/TF-Serving-Downloads/dog.jpg
