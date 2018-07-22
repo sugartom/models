@@ -90,3 +90,4 @@ ENV/
 
 im2txt/ckpt/*
 im2txt/ckpt-converted/*
+im2txt/tf_im2txt/*

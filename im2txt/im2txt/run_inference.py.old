@@ -29,27 +29,13 @@ from im2txt import inference_wrapper
 from im2txt.inference_utils import caption_generator
 from im2txt.inference_utils import vocabulary
 
-# Yitao-TLS-Begin
-# import os
-import sys
-from tensorflow.python.saved_model import builder as saved_model_builder
-from tensorflow.python.saved_model import signature_constants
-from tensorflow.python.saved_model import signature_def_utils
-from tensorflow.python.saved_model import tag_constants
-from tensorflow.python.saved_model import utils
-from tensorflow.python.util import compat
+FLAGS = tf.flags.FLAGS
 
-tf.app.flags.DEFINE_integer('model_version', 1, 'version number of the model.')
-FLAGS = tf.app.flags.FLAGS
-# Yitao-TLS-End
-
-# FLAGS = tf.flags.FLAGS
-
-tf.app.flags.DEFINE_string("checkpoint_path", "/home/yitao/Documents/models/im2txt/ckpt-converted/model.ckpt-2000000",
+tf.flags.DEFINE_string("checkpoint_path", "",
                        "Model checkpoint file or directory containing a "
                        "model checkpoint file.")
-tf.app.flags.DEFINE_string("vocab_file", "/home/yitao/Documents/models/im2txt/ckpt/word_counts.txt", "Text file containing the vocabulary.")
-tf.app.flags.DEFINE_string("input_files", "/home/yitao/Documents/TF-Serving-Downloads/dog.jpg",
+tf.flags.DEFINE_string("vocab_file", "", "Text file containing the vocabulary.")
+tf.flags.DEFINE_string("input_files", "",
                        "File pattern or comma-separated list of file patterns "
                        "of image files.")
 
@@ -63,7 +49,7 @@ def main(_):
     model = inference_wrapper.InferenceWrapper()
     restore_fn = model.build_graph_from_config(configuration.ModelConfig(),
                                                FLAGS.checkpoint_path)
-  # g.finalize()
+  g.finalize()
 
   # Create the vocabulary.
   vocab = vocabulary.Vocabulary(FLAGS.vocab_file)
@@ -87,48 +73,12 @@ def main(_):
       with tf.gfile.GFile(filename, "r") as f:
         image = f.read()
       captions = generator.beam_search(sess, image)
-      # print("[Yitao] %s" % str(captions))
-
-      test_input_tensor = sess.graph.get_tensor_by_name("image_feed:0")
-      test_output_tensor = sess.graph.get_tensor_by_name("softmax:0")
-      # print(test_tensor)
-
       print("Captions for image %s:" % os.path.basename(filename))
       for i, caption in enumerate(captions):
         # Ignore begin and end words.
         sentence = [vocab.id_to_word(w) for w in caption.sentence[1:-1]]
         sentence = " ".join(sentence)
         print("  %d) %s (p=%f)" % (i, sentence, math.exp(caption.logprob)))
-
-      # Yitao-TLS-Begin
-      export_path_base = "tf_im2txt"
-      export_path = os.path.join(
-        compat.as_bytes(export_path_base),
-        compat.as_bytes(str(FLAGS.model_version)))
-      print('Exporting trained model to %s' % str(export_path))
-      builder = saved_model_builder.SavedModelBuilder(export_path)
-
-      tensor_info_x = tf.saved_model.utils.build_tensor_info(test_input_tensor)
-      tensor_info_y = tf.saved_model.utils.build_tensor_info(test_output_tensor)
-
-      prediction_signature = tf.saved_model.signature_def_utils.build_signature_def(
-        inputs={'input': tensor_info_x},
-        outputs={'output': tensor_info_y},
-        method_name=tf.saved_model.signature_constants.PREDICT_METHOD_NAME)
-
-      legacy_init_op = tf.group(tf.tables_initializer(), name='legacy_init_op')
-      builder.add_meta_graph_and_variables(
-        sess, [tf.saved_model.tag_constants.SERVING],
-        signature_def_map={
-          'predict_images':
-            prediction_signature,
-        },
-        legacy_init_op=legacy_init_op)
-
-      builder.save()
-
-      print('Done exporting!')
-      # Yitao-TLS-End
 
 
 if __name__ == "__main__":
